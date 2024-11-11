@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Netflix Timer",
+  "name": "Netflix PrimeVideo DisneyPlus Timer",
   "version": "1.0",
   "description": "Limits your Netflix viewing time.",
   "permissions": ["tabs", "scripting"],
@@ -9,7 +9,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.netflix.com/*"],
+      "matches": ["*://*.netflix.com/*", "*://*.primevideo.com/*", "*://*.disneyplus.com/*"],
       "js": ["main.js"]
     }
   ],

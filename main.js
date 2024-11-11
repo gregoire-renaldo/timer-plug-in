@@ -19,7 +19,7 @@ function startTimer(limitInSeconds) {
       if (timeRemaining <= 0) {
           clearInterval(timer);
           pauseVideo();
-          showOverlay("Time's up! You have reached your Netflix time limit.");
+          showOverlay("Time's up! You have reached your time limit.");
       }
   }, 1000); // update every second
 }
@@ -49,21 +49,25 @@ function showOverlay(message) {
 
     const overlay = document.createElement("div");
     overlay.id = "netflix-timer-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.top = "0";
-    overlay.style.left = "0";
-    overlay.style.width = "100vw";
-    overlay.style.height = "100vh";
-    overlay.style.backgroundColor = "rgba(0, 0, 0, 0.9)";
-    overlay.style.zIndex = "9999";
-    overlay.style.display = "flex";
-    overlay.style.flexDirection = "column";
-    overlay.style.justifyContent = "center";
-    overlay.style.alignItems = "center";
-    overlay.style.color = "white";
-    overlay.style.fontSize = "24px";
-    overlay.style.textAlign = "center";
-    overlay.style.padding = "20px";
+    style = {
+        position: "fixed",
+        top: "0",
+        left: "0",
+        width: "100vw",
+        height: "100vh",
+        backgroundColor: "rgba(0, 0, 0, 0.9)",
+        zIndex: "9999",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        color: "white",
+        fontSize: "24px",
+        textAlign: "center",
+        padding: "20px",
+    };
+    Object.entries(style).forEach(([key, value]) => (overlay.style[key] = value));
+    console.log("Overlay created",overlay);
 
     const messageElement = document.createElement("p");
     messageElement.textContent = message;
@@ -73,6 +77,9 @@ function showOverlay(message) {
     const resumeButton = document.createElement("button");
     resumeButton.textContent = "Resume Playing";
     resumeButton.style.margin = "10px";
+    resumeButton.style.color = "black";
+    resumeButton.style.backgroundColor = "white";
+    resumeButton.style.cursor = "pointer";
     resumeButton.onclick = () => {
         const videoElement = document.querySelector("video");
         if (videoElement) videoElement.play();
@@ -84,6 +91,9 @@ function showOverlay(message) {
     const setNewLimitButton = document.createElement("button");
     setNewLimitButton.textContent = "Set New Limit";
     setNewLimitButton.style.margin = "10px";
+    setNewLimitButton.style.color = "black";
+    setNewLimitButton.style.backgroundColor = "white";
+    setNewLimitButton.style.cursor = "pointer";
     setNewLimitButton.onclick = () => {
         const newLimit = prompt("Enter a new time limit in seconds:");
         if (newLimit && !isNaN(newLimit)) {
@@ -98,6 +108,9 @@ function showOverlay(message) {
     const quitButton = document.createElement("button");
     quitButton.textContent = "Quit";
     quitButton.style.margin = "10px";
+    quitButton.style.color = "black";
+    quitButton.style.backgroundColor = "white";
+    quitButton.style.cursor = "pointer";
     quitButton.onclick = () => {
         chrome.runtime.sendMessage({ action: "closeTab" });
     };
