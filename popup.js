@@ -4,12 +4,18 @@ document.getElementById("startButton").addEventListener("click", () => {
 
   if (timeLimit > 0) {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          chrome.tabs.sendMessage(tabs[0].id, { action: "startTimer", timeLimit });
-      });
-  } else {
-      alert("Please enter a valid time in seconds.");
-  }
-});
+          chrome.tabs.sendMessage(tabs[0].id, { action: "startTimer", timeLimit }, (response) => {
+            if (response && response.success) {
+              window.close(); // Close the popup if the timer starts successfully
+            } else {
+              alert("Failed to start the timer. Please try again.");
+            }
+          });
+        });
+      } else {
+        alert("Please enter a valid time in seconds.");
+      }
+    });
 
 // Listen for the countdown updates from main.js
 chrome.runtime.onMessage.addListener((message) => {
@@ -61,4 +67,8 @@ document.addEventListener("DOMContentLoaded", () => {
       remainingTimeDisplay.textContent = `Time remaining: ${message.timeRemaining} seconds`;
     }
   });
+});
+
+document.getElementById("closeButton").addEventListener("click", () => {
+  window.close(); // Close the popup when the close button is clicked
 });
