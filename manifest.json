@@ -3,7 +3,7 @@
   "name": "Netflix PrimeVideo DisneyPlus Timer",
   "version": "1.0",
   "description": "Limits your Netflix viewing time.",
-  "permissions": ["tabs", "scripting"],
+  "permissions": ["tabs", "scripting", "storage"],
   "background": {
     "service_worker": "background.js"
   },
