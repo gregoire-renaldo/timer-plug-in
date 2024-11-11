@@ -2,6 +2,12 @@
 let timer = null;
 let timeLimit = 0; // time limit in seconds
 let timeElapsed = 0; // time elapsed in seconds
+const commonButtonStyle = {
+    margin: "10px",
+    color: "black",
+    backgroundColor: "white",
+    cursor: "pointer",
+}
 
 // Initialize Netflix timer
 function startTimer(limitInSeconds) {
@@ -76,10 +82,7 @@ function showOverlay(message) {
     // Create "Resume Playing" button
     const resumeButton = document.createElement("button");
     resumeButton.textContent = "Resume Playing";
-    resumeButton.style.margin = "10px";
-    resumeButton.style.color = "black";
-    resumeButton.style.backgroundColor = "white";
-    resumeButton.style.cursor = "pointer";
+    Object.entries(commonButtonStyle).forEach(([key, value]) => (resumeButton.style[key] = value));
     resumeButton.onclick = () => {
         const videoElement = document.querySelector("video");
         if (videoElement) videoElement.play();
@@ -90,10 +93,7 @@ function showOverlay(message) {
     // Create "Set New Limit" button
     const setNewLimitButton = document.createElement("button");
     setNewLimitButton.textContent = "Set New Limit";
-    setNewLimitButton.style.margin = "10px";
-    setNewLimitButton.style.color = "black";
-    setNewLimitButton.style.backgroundColor = "white";
-    setNewLimitButton.style.cursor = "pointer";
+    Object.entries(commonButtonStyle).forEach(([key, value]) => (setNewLimitButton.style[key] = value));
     setNewLimitButton.onclick = () => {
         const newLimit = prompt("Enter a new time limit in seconds:");
         if (newLimit && !isNaN(newLimit)) {
@@ -107,10 +107,7 @@ function showOverlay(message) {
     // Create "Quit" button
     const quitButton = document.createElement("button");
     quitButton.textContent = "Quit";
-    quitButton.style.margin = "10px";
-    quitButton.style.color = "black";
-    quitButton.style.backgroundColor = "white";
-    quitButton.style.cursor = "pointer";
+    Object.entries(commonButtonStyle).forEach(([key, value]) => (quitButton.style[key] = value));
     quitButton.onclick = () => {
         chrome.runtime.sendMessage({ action: "closeTab" });
     };
