@@ -45,6 +45,16 @@ document.addEventListener("DOMContentLoaded", () => {
       popupBody.style.backgroundColor = "#113CCF"; // Disney+ blue
       websiteElement.textContent = "Disney+";
     }
+
+    // Display cumulative time
+    chrome.storage.local.get(["streamingTracker"], (result) => {
+      const streamingTracker = result.streamingTracker || { days: {}, totals: {} };
+      const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+      const dayKey = `day-${currentDate}`;
+      const cumulativeTime = streamingTracker.days[dayKey]?.totalStreamingTime || 0;
+      const cumulativeTimeDisplay = document.getElementById("cumulativeTime");
+      cumulativeTimeDisplay.textContent = `Cumulative time: ${cumulativeTime} seconds`;
+    });
   });
 
   document.getElementById("startButton").addEventListener("click", () => {
