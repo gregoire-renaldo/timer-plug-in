@@ -1,24 +1,212 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Streaming Timer</title>
+  <style>
+    :root {
+      --primary-color: #6200ea;
+      --secondary-color: #03dac6;
+      --background-color: #121212;
+      --surface-color: #1e1e1e;
+      --error-color: #cf6679;
+      --on-background: #ffffff;
+      --on-surface: #e0e0e0;
+      --netflix-red: #E50914;
+      --prime-blue: #00A8E1;
+      --disney-blue: #113CCF;
+      --youtube-red: #FF0000;
+      --default-gray: #333;
+    }
+
+    body {
+      margin: 0;
+      width: 320px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--background-color);
+      color: var(--on-background);
+      overflow: hidden;
+    }
+
+    .container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 600;
+    }
+
+    #websiteIndicator {
+      font-size: 0.8rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      background-color: var(--surface-color);
+      color: var(--on-surface);
+      font-weight: bold;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--on-surface);
+    }
+
+    input[type="number"] {
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background-color: var(--surface-color);
+      color: var(--on-background);
+      font-size: 1rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--secondary-color);
+    }
+
+    .presets {
+      display: flex;
+      justify-content: space-between;
+      gap: 5px;
+    }
+
+    .preset-btn {
+      flex: 1;
+      padding: 8px 5px;
+      background-color: var(--surface-color);
+      color: var(--on-surface);
+      border: 1px solid #333;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background-color 0.2s;
+    }
+
+    .preset-btn:hover {
+      background-color: #333;
+    }
+
+    #startButton {
+      padding: 12px;
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      width: 100%;
+    }
+
+    #startButton:hover {
+      opacity: 0.9;
+    }
+
+    .stats {
+      background-color: var(--surface-color);
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .stat-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .tips-container {
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    #tipsButton {
+      background: none;
+      border: 1px solid var(--secondary-color);
+      color: var(--secondary-color);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.2s;
+    }
+
+    #tipsButton:hover {
+      background-color: var(--secondary-color);
+      color: var(--background-color);
+    }
+
+    /* Dynamic Border Colors based on Service */
+    .netflix-theme #websiteIndicator { background-color: var(--netflix-red); color: white; }
+    .prime-theme #websiteIndicator { background-color: var(--prime-blue); color: white; }
+    .disney-theme #websiteIndicator { background-color: var(--disney-blue); color: white; }
+    .youtube-theme #websiteIndicator { background-color: var(--youtube-red); color: white; }
+
+  </style>
 </head>
-<body id="popupBody" style="margin: 0; width:280px; border-radius: 30px;">
-  <div style="display: flex; flex-direction: column; justify-content: center; align-items:center; gap: 10px">
-    <button id="closeButton" style="font-size: 10px;
-    height: 20px;
-    width: 20px;
-    border: none;
-    border-radius: 100%;
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    cursor: pointer">X</button>
-    <h2>Set <span id="websiteName"></span> Time Limit</h2>
-    <input id="timeInput" type="number" placeholder="Enter time in seconds" min="1" style="width: 150px" />
+<body>
+  <div class="container" id="mainContainer">
+    <header>
+      <h2>Stream Timer</h2>
+      <div id="websiteIndicator">Detecting...</div>
+    </header>
+
+    <div class="input-group">
+      <label for="timeInput">Set Time Limit (minutes)</label>
+      <input id="timeInput" type="number" placeholder="e.g. 45" min="1" />
+    </div>
+
+    <div class="presets">
+      <button class="preset-btn" data-time="15">15m</button>
+      <button class="preset-btn" data-time="30">30m</button>
+      <button class="preset-btn" data-time="45">45m</button>
+      <button class="preset-btn" data-time="60">1h</button>
+    </div>
+
     <button id="startButton">Start Timer</button>
-    <div id="remainingTime" style="margin-top: 10px; font-size: 16px; color: black;"></div>
-    <div id="cumulativeTime" style="margin-top: 10px; font-size: 16px; color: black;"></div>
+
+    <div class="stats">
+      <div class="stat-item">
+        <span>Remaining:</span>
+        <span id="remainingTime">--:--</span>
+      </div>
+      <div class="stat-item">
+        <span>Today's Total:</span>
+        <span id="cumulativeTime">0m</span>
+      </div>
+    </div>
+
+    <div class="tips-container">
+      <a id="tipsButton" href="#" target="_blank">☕ Buy me a coffee</a>
+    </div>
   </div>
   <script src="popup.js"></script>
 </body>

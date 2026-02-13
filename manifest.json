@@ -9,7 +9,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["*://*.netflix.com/*", "*://*.primevideo.com/*", "*://*.disneyplus.com/*"],
+      "matches": ["*://*.netflix.com/*", "*://*.primevideo.com/*", "*://*.disneyplus.com/*", "*://*.youtube.com/*"],
       "js": ["main.js"]
     }
   ],
