@@ -168,7 +168,7 @@ function showOverlay(message) {
     // Tips Link
     const tipsLink = document.createElement("a");
     tipsLink.textContent = "☕ Buy the developer a coffee";
-    tipsLink.href = "https://www.buymeacoffee.com/yourusername";
+    tipsLink.href = "https://buymeacoffee.com/grg_rnd";
     tipsLink.target = "_blank";
     tipsLink.style.color = "#bb86fc";
     tipsLink.style.textDecoration = "none";
