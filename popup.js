@@ -4,6 +4,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const websiteIndicator = document.getElementById("websiteIndicator");
     const mainContainer = document.getElementById("mainContainer");
     const tipsButton = document.getElementById("tipsButton");
+    const openSettingsBtn = document.getElementById("openSettingsBtn");
+    const pinInputPopup = document.getElementById("pinInputPopup");
+    const cooldownWarning = document.getElementById("cooldownWarning");
+    
+    let currentSettings = {};
+
+    openSettingsBtn.addEventListener("click", () => {
+        chrome.runtime.openOptionsPage();
+    });
     
     // Default Tips Link (Placeholder)
     tipsButton.href = "https://www.buymeacoffee.com/yourusername"; 
@@ -48,8 +57,43 @@ document.addEventListener("DOMContentLoaded", () => {
         updateStats();
     });
 
+    // Load Settings
+    chrome.storage.local.get(["timerSettings"], (result) => {
+        currentSettings = result.timerSettings || {};
+        
+        // Handle Cooldown UI
+        if (currentSettings.cooldownMode && currentSettings.cooldownUntil) {
+            const now = Date.now();
+            if (now < currentSettings.cooldownUntil) {
+                const remainingSecs = Math.ceil((currentSettings.cooldownUntil - now) / 1000);
+                const mins = Math.floor(remainingSecs / 60);
+                const secs = remainingSecs % 60;
+                
+                cooldownWarning.textContent = `Cooldown active for ${mins}m ${secs}s`;
+                cooldownWarning.style.display = 'block';
+                startButton.disabled = true;
+                startButton.style.backgroundColor = '#555';
+                document.querySelectorAll(".preset-btn").forEach(btn => btn.disabled = true);
+            }
+        }
+
+        // Handle PIN UI
+        if (currentSettings.pinMode) {
+            pinInputPopup.style.display = 'block';
+        }
+    });
+
     // Start Timer
     startButton.addEventListener("click", () => {
+        if (startButton.disabled) return;
+
+        if (currentSettings.pinMode) {
+            if (pinInputPopup.value !== currentSettings.pin) {
+                alert("Incorrect PIN.");
+                return;
+            }
+        }
+
         const minutes = parseInt(timeInput.value);
         
         if (minutes > 0) {

@@ -31,6 +31,16 @@ function startTimer(limitInSeconds) {
         if (timeRemaining <= 0) {
             clearInterval(timer);
             pauseVideo();
+            
+            // Record cooldown if enabled
+            chrome.storage.local.get(["timerSettings"], (result) => {
+                const settings = result.timerSettings || {};
+                if (settings.cooldownMode && settings.cooldownMinutes > 0) {
+                    settings.cooldownUntil = Date.now() + (settings.cooldownMinutes * 60000);
+                    chrome.storage.local.set({ timerSettings: settings });
+                }
+            });
+            
             showOverlay("Time's up! You've reached your limit.");
         }
 
@@ -155,10 +165,56 @@ function showOverlay(message) {
     const newLimitButton = document.createElement("button");
     newLimitButton.textContent = "Watch 15m More";
     Object.assign(newLimitButton.style, btnStyle, { backgroundColor: "#03dac6", color: "black" });
+    
+    // Check initial cooldown state for button text
+    chrome.storage.local.get(["timerSettings"], (result) => {
+        const settings = result.timerSettings || {};
+        if (settings.cooldownMode && settings.cooldownUntil && Date.now() < settings.cooldownUntil) {
+            newLimitButton.textContent = "Cooldown Active";
+            newLimitButton.style.backgroundColor = "#555";
+            newLimitButton.style.color = "white";
+        }
+    });
+
     newLimitButton.onclick = () => {
-        startTimer(15 * 60);
-        overlay.remove();
-        playVideo();
+        chrome.storage.local.get(["timerSettings"], (result) => {
+            const settings = result.timerSettings || {};
+            
+            // 1. Check Cooldown
+            if (settings.cooldownMode && settings.cooldownUntil) {
+                if (Date.now() < settings.cooldownUntil) {
+                    const remainingMins = Math.ceil((settings.cooldownUntil - Date.now()) / 60000);
+                    alert(`Cooldown is still active. Please wait ${remainingMins} more minute(s).`);
+                    return;
+                }
+            }
+
+            // 2. Check PIN
+            if (settings.pinMode && settings.pin) {
+                const enteredPin = prompt("Enter your 4-digit PIN to add more time:");
+                if (enteredPin === null) return; // User cancelled
+                
+                if (enteredPin !== settings.pin) {
+                    const resetPhrase = "I confirm I am an adult and I want to reset the PIN.";
+                    const attempt = prompt(`Incorrect PIN.\n\nTo reset the PIN, type the following phrase exactly (including punctuation):\n\n${resetPhrase}`);
+                    
+                    if (attempt === resetPhrase) {
+                        alert("PIN has been reset. You can now add time without a PIN. Please set a new one in the extension Options later.");
+                        settings.pinMode = false;
+                        settings.pin = null;
+                        chrome.storage.local.set({ timerSettings: settings });
+                    } else {
+                        alert("Reset phrase incorrect. Time not added.");
+                        return;
+                    }
+                }
+            }
+            
+            // 3. Add Time
+            startTimer(15 * 60);
+            overlay.remove();
+            playVideo();
+        });
     };
 
     btnContainer.appendChild(newLimitButton);
