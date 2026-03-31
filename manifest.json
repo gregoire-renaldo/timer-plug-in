@@ -3,13 +3,13 @@
   "name": "Netflix PrimeVideo DisneyPlus Timer",
   "version": "1.0",
   "description": "Limits your Netflix viewing time.",
-  "permissions": ["tabs", "scripting", "storage"],
+  "permissions": ["tabs", "storage"],
   "background": {
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["*://*.netflix.com/*", "*://*.primevideo.com/*", "*://*.disneyplus.com/*"],
+      "matches": ["*://*.netflix.com/*", "*://*.primevideo.com/*", "*://*.disneyplus.com/*", "*://*.youtube.com/*"],
       "js": ["main.js"]
     }
   ],
@@ -21,6 +21,7 @@
       "128": "icon128.png"
     }
   },
+  "options_page": "options.html",
   "icons": {
     "16": "icon16.png",
     "48": "icon48.png",

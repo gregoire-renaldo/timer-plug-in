@@ -2,146 +2,239 @@
 let timer = null;
 let timeLimit = 0; // time limit in seconds
 let timeElapsed = 0; // time elapsed in seconds
-const commonButtonStyle = {
-    margin: "10px",
-    color: "black",
-    backgroundColor: "white",
-    cursor: "pointer",
-}
 
-// Initialize Netflix timer
+// Initialize
 function startTimer(limitInSeconds) {
-  timeLimit = limitInSeconds;
-  timeElapsed = 0;
-  clearInterval(timer);
-
-  timer = setInterval(() => {
-    timeElapsed++;
-    const timeRemaining = timeLimit - timeElapsed;
-
-    // Send remaining time to popup if time is remaining
-    chrome.runtime.sendMessage({ action: "updateRemainingTime", timeRemaining });
-    if (timeRemaining <= 0) {
-        clearInterval(timer);
-        pauseVideo();
-        showOverlay("Time's up! You have reached your time limit.");
+    if (!checkLimit(limitInSeconds)) { 
+        return;
     }
+    timeLimit = limitInSeconds;
+    timeElapsed = 0;
+    if (timer) clearInterval(timer);
 
-    // Update cumulative time
-    updateStreamingTracker(1); // Increment by 1 second
-  }, 1000); 
+    timer = setInterval(() => {
+        timeElapsed++;
+        const timeRemaining = timeLimit - timeElapsed;
+
+        // Send remaining time to popup
+        try {
+            chrome.runtime.sendMessage({ action: "updateRemainingTime", timeRemaining });
+        } catch (e) {
+            // Popup might be closed, ignore error
+        }
+
+        // Show warning toast 1 minute before
+        if (timeRemaining === 60) {
+            showToast("1 minute remaining!");
+        }
+
+        if (timeRemaining <= 0) {
+            clearInterval(timer);
+            pauseVideo();
+            
+            // Record cooldown if enabled
+            chrome.storage.local.get(["timerSettings"], (result) => {
+                const settings = result.timerSettings || {};
+                if (settings.cooldownMode && settings.cooldownMinutes > 0) {
+                    settings.cooldownUntil = Date.now() + (settings.cooldownMinutes * 60000);
+                    chrome.storage.local.set({ timerSettings: settings });
+                }
+            });
+            
+            showOverlay("Time's up! You've reached your limit.");
+        }
+
+        // Update cumulative time
+        updateStreamingTracker(1); 
+    }, 1000); 
 }
 
 function pauseVideo() {
-  const videoElement = document.querySelector("video");
-  console.log("Pause video", videoElement);
-  if (videoElement) {
-      videoElement.pause();
-      console.log("Video paused.");
-  }
+    const videoElement = document.querySelector("video");
+    if (videoElement) {
+        videoElement.pause();
+    }
 }
 
 function playVideo() { 
-  console.log("Play video");
-  const videoElement = document.querySelector("video");
-  if (videoElement) {
-      videoElement.play();
-      console.log("Video playing.");
-  }
+    const videoElement = document.querySelector("video");
+    if (videoElement) {
+        videoElement.play();
+    }
+}
+
+function showToast(message) {
+    const toast = document.createElement("div");
+    toast.textContent = message;
+    Object.assign(toast.style, {
+        position: "fixed",
+        top: "20px",
+        right: "20px",
+        backgroundColor: "rgba(0, 0, 0, 0.8)",
+        color: "white",
+        padding: "10px 20px",
+        borderRadius: "5px",
+        zIndex: "10000",
+        fontSize: "16px",
+        transition: "opacity 0.5s"
+    });
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 500);
+    }, 3000);
 }
 
 // Display full-screen overlay with buttons
 function showOverlay(message) {
-    // Remove any existing overlay
     const existingOverlay = document.getElementById("netflix-timer-overlay");
     if (existingOverlay) existingOverlay.remove();
 
     const overlay = document.createElement("div");
     overlay.id = "netflix-timer-overlay";
-    style = {
+    Object.assign(overlay.style, {
         position: "fixed",
         top: "0",
         left: "0",
         width: "100vw",
         height: "100vh",
-        backgroundColor: "rgba(0, 0, 0, 0.9)",
-        zIndex: "9999",
+        backgroundColor: "rgba(0, 0, 0, 0.95)",
+        zIndex: "2147483647", // Max z-index
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
         color: "white",
-        fontSize: "24px",
-        textAlign: "center",
-        padding: "20px",
-    };
-    Object.entries(style).forEach(([key, value]) => (overlay.style[key] = value));
-    console.log("Overlay created",overlay);
+        fontFamily: "Segoe UI, sans-serif",
+        textAlign: "center"
+    });
 
+    // Content container
+    const content = document.createElement("div");
+    content.style.maxWidth = "500px";
+    content.style.padding = "20px";
+    
+    // Heading
+    const heading = document.createElement("h1");
+    heading.textContent = message;
+    heading.style.fontSize = "2.5rem";
+    heading.style.marginBottom = "20px";
+    content.appendChild(heading);
+
+    // Stats
     const statsDiv = document.createElement("div");
-      chrome.storage.local.get(["streamingTracker"], (result) => {
-          const streamingTracker = result.streamingTracker || { days: {}, totals: {} };
-          const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
-          const dayKey = `day-${currentDate}`;
-          const dayStats = streamingTracker.days[dayKey] || { totalStreamingTime: 0, amazonTime: 0, disneyTime: 0, netflixTime: 0 };
-          const totalStats = streamingTracker.totals || { totalStreamingTime: 0, totalAmazonTime: 0, totalDisneyTime: 0, totalNetflixTime: 0 };
+    statsDiv.style.marginBottom = "30px";
+    statsDiv.style.fontSize = "1.2rem";
+    statsDiv.style.lineHeight = "1.6";
+    
+    chrome.storage.local.get(["streamingTracker"], (result) => {
+        const streamingTracker = result.streamingTracker || { days: {}, totals: {} };
+        const currentDate = new Date().toISOString().split('T')[0];
+        const dayKey = `day-${currentDate}`;
+        const dayStats = streamingTracker.days[dayKey] || { totalStreamingTime: 0 };
+        
+        const mins = Math.floor(dayStats.totalStreamingTime / 60);
+        statsDiv.textContent = `You've watched ${mins} minutes today.`;
+    });
+    content.appendChild(statsDiv);
 
-          const dayStatsElement = document.createElement("p");
-          dayStatsElement.textContent = `Today's Stats:
-          Total: ${dayStats.totalStreamingTime} seconds
-          Netflix: ${dayStats.netflixTime} seconds
-          Amazon: ${dayStats.amazonTime} seconds
-          Disney: ${dayStats.disneyTime} seconds`;
-          statsDiv.appendChild(dayStatsElement);
+    // Buttons Container
+    const btnContainer = document.createElement("div");
+    btnContainer.style.display = "flex";
+    btnContainer.style.gap = "15px";
+    btnContainer.style.justifyContent = "center";
+    btnContainer.style.marginBottom = "30px";
 
-          const totalStatsElement = document.createElement("p");
-          totalStatsElement.textContent = `Total Stats:
-          Total: ${totalStats.totalStreamingTime} seconds
-          Netflix: ${totalStats.totalNetflixTime} seconds
-          Amazon: ${totalStats.totalAmazonTime} seconds
-          Disney: ${totalStats.totalDisneyTime} seconds`;
-          statsDiv.appendChild(totalStatsElement);
-      });
-    overlay.appendChild(statsDiv);
+    // Button Styles
+    const btnStyle = {
+        padding: "12px 24px",
+        fontSize: "1rem",
+        border: "none",
+        borderRadius: "5px",
+        cursor: "pointer",
+        fontWeight: "bold"
+    };
 
+    // Quit Button
+    const quitButton = document.createElement("button");
+    quitButton.textContent = "Close Tab";
+    Object.assign(quitButton.style, btnStyle, { backgroundColor: "#cf6679", color: "white" });
+    quitButton.onclick = () => chrome.runtime.sendMessage({ action: "closeTab" });
+    
+    // Extensions Limits Button
+    const newLimitButton = document.createElement("button");
+    newLimitButton.textContent = "Watch 15m More";
+    Object.assign(newLimitButton.style, btnStyle, { backgroundColor: "#03dac6", color: "black" });
+    
+    // Check initial cooldown state for button text
+    chrome.storage.local.get(["timerSettings"], (result) => {
+        const settings = result.timerSettings || {};
+        if (settings.cooldownMode && settings.cooldownUntil && Date.now() < settings.cooldownUntil) {
+            newLimitButton.textContent = "Cooldown Active";
+            newLimitButton.style.backgroundColor = "#555";
+            newLimitButton.style.color = "white";
+        }
+    });
 
-    const messageElement = document.createElement("p");
-    messageElement.textContent = message;
-    overlay.appendChild(messageElement);
+    newLimitButton.onclick = () => {
+        chrome.storage.local.get(["timerSettings"], (result) => {
+            const settings = result.timerSettings || {};
+            
+            // 1. Check Cooldown
+            if (settings.cooldownMode && settings.cooldownUntil) {
+                if (Date.now() < settings.cooldownUntil) {
+                    const remainingMins = Math.ceil((settings.cooldownUntil - Date.now()) / 60000);
+                    alert(`Cooldown is still active. Please wait ${remainingMins} more minute(s).`);
+                    return;
+                }
+            }
 
-    // Create "Resume Playing" button 
-    // const resumeButton = document.createElement("button");
-    // resumeButton.textContent = "Resume Playing";
-    // Object.entries(commonButtonStyle).forEach(([key, value]) => (resumeButton.style[key] = value));
-    // resumeButton.onclick = () => {
-    //     const videoElement = document.querySelector("video");
-    //     if (videoElement) videoElement.play();
-    //     overlay.remove();
-    // };
-    // overlay.appendChild(resumeButton);
-
-    // Create "Set New Limit" button
-    const setNewLimitButton = document.createElement("button");
-    setNewLimitButton.textContent = "Set New Limit";
-    Object.entries(commonButtonStyle).forEach(([key, value]) => (setNewLimitButton.style[key] = value));
-    setNewLimitButton.onclick = () => {
-        const newLimit = prompt("Enter a new time limit in seconds:");
-        if (newLimit && !isNaN(newLimit)) {
-            startTimer(parseInt(newLimit));
+            // 2. Check PIN
+            if (settings.pinMode && settings.pin) {
+                const enteredPin = prompt("Enter your 4-digit PIN to add more time:");
+                if (enteredPin === null) return; // User cancelled
+                
+                if (enteredPin !== settings.pin) {
+                    const resetPhrase = "I confirm I am an adult and I want to reset the PIN.";
+                    const attempt = prompt(`Incorrect PIN.\n\nTo reset the PIN, type the following phrase exactly (including punctuation):\n\n${resetPhrase}`);
+                    
+                    if (attempt === resetPhrase) {
+                        alert("PIN has been reset. You can now add time without a PIN. Please set a new one in the extension Options later.");
+                        settings.pinMode = false;
+                        settings.pin = null;
+                        chrome.storage.local.set({ timerSettings: settings });
+                    } else {
+                        alert("Reset phrase incorrect. Time not added.");
+                        return;
+                    }
+                }
+            }
+            
+            // 3. Add Time
+            startTimer(15 * 60);
             overlay.remove();
             playVideo();
-        }
+        });
     };
-    overlay.appendChild(setNewLimitButton);
 
-    // Create "Quit" button
-    const quitButton = document.createElement("button");
-    quitButton.textContent = "Quit";
-    Object.entries(commonButtonStyle).forEach(([key, value]) => (quitButton.style[key] = value));
-    quitButton.onclick = () => {
-        chrome.runtime.sendMessage({ action: "closeTab" });
-    };
-    overlay.appendChild(quitButton);
+    btnContainer.appendChild(newLimitButton);
+    btnContainer.appendChild(quitButton);
+    content.appendChild(btnContainer);
+
+    // Tips Link
+    const tipsLink = document.createElement("a");
+    tipsLink.textContent = "☕ Buy the developer a coffee";
+    tipsLink.href = "https://buymeacoffee.com/grg_rnd";
+    tipsLink.target = "_blank";
+    tipsLink.style.color = "#bb86fc";
+    tipsLink.style.textDecoration = "none";
+    tipsLink.style.fontSize = "0.9rem";
+    tipsLink.style.marginTop = "20px";
+    tipsLink.onmouseover = () => tipsLink.style.textDecoration = "underline";
+    tipsLink.onmouseout = () => tipsLink.style.textDecoration = "none";
+    
+    content.appendChild(tipsLink);
+    overlay.appendChild(content);
 
     document.body.appendChild(overlay);
 }
@@ -149,7 +242,7 @@ function showOverlay(message) {
 function updateStreamingTracker(seconds) {
   chrome.storage.local.get(["streamingTracker"], (result) => {
     let streamingTracker = result.streamingTracker || { days: {}, totals: {} };
-    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    const currentDate = new Date().toISOString().split('T')[0];
     const dayKey = `day-${currentDate}`;
 
     if (!streamingTracker.days[dayKey]) {
@@ -158,40 +251,46 @@ function updateStreamingTracker(seconds) {
             amazonTime: 0,
             disneyTime: 0,
             netflixTime: 0,
+            youtubeTime: 0
         };
     }
 
     const domain = window.location.hostname;
     if (domain.includes("netflix.com")) {
-        streamingTracker.days[dayKey].netflixTime += seconds;
+        streamingTracker.days[dayKey].netflixTime = (streamingTracker.days[dayKey].netflixTime || 0) + seconds;
         streamingTracker.totals.totalNetflixTime = (streamingTracker.totals.totalNetflixTime || 0) + seconds;
     } else if (domain.includes("primevideo.com")) {
-        streamingTracker.days[dayKey].amazonTime += seconds;
+        streamingTracker.days[dayKey].amazonTime = (streamingTracker.days[dayKey].amazonTime || 0) + seconds;
         streamingTracker.totals.totalAmazonTime = (streamingTracker.totals.totalAmazonTime || 0) + seconds;
     } else if (domain.includes("disneyplus.com")) {
-        streamingTracker.days[dayKey].disneyTime += seconds;
+        streamingTracker.days[dayKey].disneyTime = (streamingTracker.days[dayKey].disneyTime || 0) + seconds;
         streamingTracker.totals.totalDisneyTime = (streamingTracker.totals.totalDisneyTime || 0) + seconds;
+    } else if (domain.includes("youtube.com")) {
+        streamingTracker.days[dayKey].youtubeTime = (streamingTracker.days[dayKey].youtubeTime || 0) + seconds;
+        streamingTracker.totals.totalYoutubeTime = (streamingTracker.totals.totalYoutubeTime || 0) + seconds;
     }
 
     streamingTracker.days[dayKey].totalStreamingTime += seconds;
     streamingTracker.totals.totalStreamingTime = (streamingTracker.totals.totalStreamingTime || 0) + seconds;
 
-    chrome.storage.local.set({ streamingTracker }, () => {
-        console.log(`Streaming tracker updated: ${JSON.stringify(streamingTracker)}`);
-    });
+    chrome.storage.local.set({ streamingTracker });
   });
 }
 
-// Listen for messages from popup or background script to set a new timer
+// Listen for messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    console.log("Listen for messages from popup or background script to set a new timer:", request.action);
     if (request.action === "startTimer") {
         startTimer(request.timeLimit);
         sendResponse({ success: true });
     } else if (request.action === "closeTab") {
-      console.log("Closing tab..."); 
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-            chrome.tabs.remove(tabs[0].id);
-        });
+        // This is handled in background.js, but good to have fallback/confirmation
     }
 });
+
+function checkLimit(limitInSeconds) {
+    if (isNaN(limitInSeconds) || limitInSeconds <= 0 || limitInSeconds > 86400) {
+        alert("Please enter a valid time limit in seconds (1-86400).");
+        return false;
+    }
+    return true;
+}
